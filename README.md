@@ -1,3 +1,6 @@
+
+<img width="1634" height="831" alt="image" src="https://github.com/user-attachments/assets/79977cc4-2314-4a7c-a758-c979e656f5e0" />
+
 # ⌨️ Typing Battle
 
 링크 하나로 친구를 불러서, 같은 지문을 동시에 타이핑하며 속도를 겨루는 실시간 멀티플레이 게임.
