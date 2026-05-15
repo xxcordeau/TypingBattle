@@ -143,6 +143,66 @@ export function HomePage() {
           )}
         </PixelBox>
 
+        <PixelBox
+          style={{
+            marginTop: "24px",
+            animation: "floatUp 0.5s 0.2s ease both",
+            opacity: 0,
+            animationFillMode: "forwards",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: "8px",
+              color: "#1a1a1a",
+              letterSpacing: "1px",
+              marginBottom: "14px",
+            }}
+          >
+            HOW TO PLAY
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              fontFamily: PIXEL_FONT,
+              fontSize: "7px",
+              lineHeight: "1.8",
+            }}
+          >
+            {[
+              { step: "1", ko: "닉네임을 입력하세요", en: "Enter your nickname" },
+              { step: "2", ko: "방을 만들거나 코드로 참가하세요", en: "Create a room or join with a code" },
+              { step: "3", ko: "친구에게 방 코드를 공유하세요", en: "Share the room code with friends" },
+              { step: "4", ko: "주어진 문장을 가장 빠르게 타이핑하세요", en: "Type the given text as fast as you can" },
+              { step: "5", ko: "먼저 끝내는 사람이 승리!", en: "First to finish wins!" },
+            ].map((item) => (
+              <div key={item.step} style={{ display: "flex", gap: "10px" }}>
+                <span
+                  style={{
+                    color: "#f0ece0",
+                    background: "#1a1a1a",
+                    minWidth: "18px",
+                    height: "18px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.step}
+                </span>
+                <div>
+                  <div style={{ color: "#1a1a1a" }}>{item.ko}</div>
+                  <div style={{ color: "#aaa" }}>{item.en}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </PixelBox>
+
         <div
           style={{
             marginTop: "24px",
