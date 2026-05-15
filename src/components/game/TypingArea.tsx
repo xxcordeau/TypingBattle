@@ -60,6 +60,9 @@ export const TypingArea = forwardRef<HTMLTextAreaElement, Props>(function Typing
         ref={ref}
         value={input}
         onChange={onChange}
+        onPaste={(e) => e.preventDefault()}
+        onCopy={(e) => e.preventDefault()}
+        onCut={(e) => e.preventDefault()}
         disabled={!started}
         rows={3}
         style={{
