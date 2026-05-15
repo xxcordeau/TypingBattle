@@ -13,7 +13,13 @@ type Tab = "create" | "join";
 
 export function HomePage() {
   const { nickname, setNickname, createRoom, joinRoom, isLoading } = useGameStore();
-  const [tab, setTab] = useState<Tab>("create");
+
+  const [inviteCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("code")?.toUpperCase() ?? "";
+  });
+
+  const [tab, setTab] = useState<Tab>(inviteCode ? "join" : "create");
 
   const handleCreate = (textType: TextType, totalRounds: number, customText?: string) => {
     if (!nickname) return;
@@ -139,7 +145,7 @@ export function HomePage() {
           {tab === "create" ? (
             <CreateRoomForm disabled={!nickname || isLoading} onSubmit={handleCreate} />
           ) : (
-            <JoinRoomForm disabled={!nickname || isLoading} onSubmit={handleJoin} />
+            <JoinRoomForm disabled={!nickname || isLoading} onSubmit={handleJoin} initialCode={inviteCode} />
           )}
         </PixelBox>
 

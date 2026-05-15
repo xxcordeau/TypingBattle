@@ -6,10 +6,11 @@ import { PixelInput } from "@/components/common/PixelInput";
 interface Props {
   disabled: boolean;
   onSubmit: (roomCode: string) => void;
+  initialCode?: string;
 }
 
-export function JoinRoomForm({ disabled, onSubmit }: Props) {
-  const [roomCode, setRoomCode] = useState("");
+export function JoinRoomForm({ disabled, onSubmit, initialCode = "" }: Props) {
+  const [roomCode, setRoomCode] = useState(initialCode);
 
   return (
     <div style={{ animation: "popIn 0.2s ease" }}>
