@@ -41,6 +41,8 @@ export function GamePage() {
           wins: msg.wins,
           roundWinnerId: msg.roundWinnerId,
         });
+        const rounds = msg.totalRounds ?? useGameStore.getState().totalRounds;
+        if (rounds <= 1) return;
         setScreen("roundResult");
       } else if (msg.type === "GAME_OVER") {
         if (msg.wins) setRoundInfo({ wins: msg.wins });
@@ -89,13 +91,9 @@ export function GamePage() {
       sendFinish({ playerId, wpm: metrics.wpm, accuracy: metrics.accuracy });
       setMyResult(metrics);
       setWaitingForOthers(true);
-      if (totalRounds <= 1) {
-        const id = window.setTimeout(() => setScreen("result"), 500);
-        return () => window.clearTimeout(id);
-      }
     }
     return undefined;
-  }, [metrics, playerId, sendFinish, setMyResult, totalRounds, setScreen]);
+  }, [metrics, playerId, sendFinish, setMyResult]);
 
   const handleQuit = () => {
     leaveRoom();
@@ -152,7 +150,7 @@ export function GamePage() {
         </div>
       )}
 
-      {waitingForOthers && totalRounds > 1 && (
+      {waitingForOthers && (
         <div
           style={{
             position: "fixed",

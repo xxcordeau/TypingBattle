@@ -1,5 +1,4 @@
-import { useEffect, useMemo } from "react";
-import type { GameResult } from "@/types";
+import { useEffect } from "react";
 import { PIXEL_FONT } from "@/styles/globalStyles";
 import { useGameStore } from "@/store/useGameStore";
 import { fetchResult } from "@/api/roomApi";
@@ -10,9 +9,7 @@ import { ResultTable } from "@/components/result/ResultTable";
 export function ResultPage() {
   const {
     roomId,
-    nickname,
     playerId,
-    myResult,
     results,
     setResults,
     leaveRoom,
@@ -22,25 +19,11 @@ export function ResultPage() {
   } = useGameStore();
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || results.length > 0) return;
     fetchResult(roomId).then((res) => {
       setResults(res.results);
     });
-  }, [roomId, setResults]);
-
-  const merged: GameResult[] = useMemo(() => {
-    const base = results;
-    if (!myResult) return base;
-    const me: GameResult = {
-      rank: 1,
-      playerId: playerId ?? "me",
-      playerName: nickname || "YOU",
-      wpm: myResult.wpm,
-      accuracy: myResult.accuracy,
-      finishedAt: new Date().toISOString(),
-    };
-    return [me, ...base.filter((r) => r.playerId !== playerId)];
-  }, [results, myResult, nickname, playerId]);
+  }, [roomId, setResults, results.length]);
 
   const sortedWins = Object.entries(wins)
     .map(([pid, w]) => ({
@@ -50,8 +33,16 @@ export function ResultPage() {
     }))
     .sort((a, b) => b.wins - a.wins);
 
-  const overallWinner = sortedWins.length > 0 ? sortedWins[0] : null;
-  const iWon = overallWinner?.pid === playerId;
+  const firstPlace = results.find((r) => r.rank === 1);
+  const winnerName =
+    totalRounds > 1 && sortedWins.length > 0
+      ? sortedWins[0].name
+      : firstPlace?.playerName;
+  const winnerId =
+    totalRounds > 1 && sortedWins.length > 0
+      ? sortedWins[0].pid
+      : firstPlace?.playerId;
+  const iWon = winnerId === playerId;
 
   return (
     <div
@@ -77,7 +68,7 @@ export function ResultPage() {
           >
             GAME OVER
           </div>
-          {totalRounds > 1 && overallWinner && (
+          {winnerName && (
             <div
               style={{
                 fontFamily: PIXEL_FONT,
@@ -87,7 +78,7 @@ export function ResultPage() {
                 letterSpacing: "1px",
               }}
             >
-              {iWon ? "YOU WIN!" : `${overallWinner.name} WINS!`}
+              {iWon ? "YOU WIN!" : `${winnerName} WINS!`}
             </div>
           )}
           <div style={{ fontFamily: PIXEL_FONT, fontSize: "8px", color: "#888", marginTop: "8px" }}>
@@ -130,7 +121,7 @@ export function ResultPage() {
           </PixelBox>
         )}
 
-        <ResultTable results={merged} />
+        <ResultTable results={results} />
 
         <div style={{ display: "flex", gap: "10px" }}>
           <PixelButton
