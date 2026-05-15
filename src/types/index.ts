@@ -2,7 +2,7 @@ export type TextType = "korean" | "english" | "custom";
 
 export type RoomStatus = "waiting" | "playing" | "finished";
 
-export type Screen = "home" | "waiting" | "game" | "result";
+export type Screen = "home" | "waiting" | "game" | "roundResult" | "result";
 
 export interface PlayerResponse {
   playerId: string;
@@ -24,6 +24,7 @@ export interface CreateRoomRequest {
   maxPlayers: number;
   textType: TextType;
   customText?: string;
+  totalRounds?: number;
 }
 
 export interface CreateRoomResponse {
@@ -32,6 +33,7 @@ export interface CreateRoomResponse {
   hostId: string;
   text: string;
   maxPlayers: number;
+  totalRounds: number;
   status: RoomStatus;
 }
 
@@ -65,6 +67,8 @@ export interface ResultResponse {
 export type RoomTopicMessage = {
   type: "PLAYER_JOINED" | "PLAYER_LEFT" | "GAME_START";
   players: PlayerResponse[];
+  totalRounds?: number;
+  currentRound?: number;
 };
 
 export type GameTopicMessage = {
@@ -72,7 +76,13 @@ export type GameTopicMessage = {
 };
 
 export type ResultTopicMessage = {
-  results: GameResult[];
+  type?: "ROUND_RESULT" | "GAME_OVER" | "NEXT_ROUND";
+  currentRound?: number;
+  totalRounds?: number;
+  roundWinnerId?: string;
+  results?: GameResult[];
+  wins?: Record<string, number>;
+  text?: string;
 };
 
 export interface ProgressPayload {
@@ -85,4 +95,10 @@ export interface FinishPayload {
   playerId: string;
   wpm: number;
   accuracy: number;
+}
+
+export interface ApiError {
+  status: number;
+  message: string;
+  code?: string;
 }

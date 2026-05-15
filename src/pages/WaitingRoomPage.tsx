@@ -1,22 +1,36 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PIXEL_FONT } from "@/styles/globalStyles";
 import { useGameStore } from "@/store/useGameStore";
 import { useRoom } from "@/hooks/useRoom";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import type { RoomTopicMessage } from "@/types";
 import { PlayerList } from "@/components/waiting/PlayerList";
 import { RoomCodeShare } from "@/components/waiting/RoomCodeShare";
 import { StartButton } from "@/components/waiting/StartButton";
+import { ConnectionBadge } from "@/components/common/ConnectionBadge";
 
 export function WaitingRoomPage() {
   const { roomId, roomCode, players, isHost, maxPlayers, leaveRoom } = useRoom();
   const setScreen = useGameStore((s) => s.setScreen);
+  const setPlayers = useGameStore((s) => s.setPlayers);
+  const setRoundInfo = useGameStore((s) => s.setRoundInfo);
+  const totalRounds = useGameStore((s) => s.totalRounds);
   const [dots, setDots] = useState("");
 
-  const ws = useWebSocket(roomId, {
-    onRoomUpdate: () => {
-      // TODO: 서버 연동 시 players 상태 갱신
+  const onRoomUpdate = useCallback(
+    (msg: RoomTopicMessage) => {
+      setPlayers(msg.players);
+      if (msg.type === "GAME_START") {
+        if (msg.totalRounds != null || msg.currentRound != null) {
+          setRoundInfo({ totalRounds: msg.totalRounds, currentRound: msg.currentRound });
+        }
+        setScreen("game");
+      }
     },
-  });
+    [setPlayers, setScreen, setRoundInfo],
+  );
+
+  const ws = useWebSocket(roomId, { onRoomUpdate });
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -43,6 +57,7 @@ export function WaitingRoomPage() {
         padding: "40px 20px",
       }}
     >
+      <ConnectionBadge status={ws.status} />
       <div style={{ width: "100%", maxWidth: "520px" }}>
         <div
           style={{
@@ -74,6 +89,21 @@ export function WaitingRoomPage() {
         </div>
 
         <RoomCodeShare roomCode={roomCode ?? ""} />
+
+        {totalRounds > 1 && (
+          <div
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: "8px",
+              color: "#555",
+              textAlign: "center",
+              marginBottom: "16px",
+              letterSpacing: "2px",
+            }}
+          >
+            BEST OF {totalRounds}
+          </div>
+        )}
 
         <PlayerList players={players} dots={dots} emptySlotCount={emptySlotCount} />
 

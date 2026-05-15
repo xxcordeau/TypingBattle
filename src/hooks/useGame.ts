@@ -1,11 +1,8 @@
-import { useEffect, useState } from "react";
-import type { GamePlayer } from "@/types";
+import { useCallback, useEffect, useState } from "react";
+import type { GamePlayer, GameTopicMessage } from "@/types";
+import { useMock } from "@/api/client";
 import { useRoom } from "./useRoom";
 
-/**
- * 게임 진행 상태 (상대방 진행률 시뮬레이션).
- * 실제로는 WebSocket /topic/game/{roomId} 에서 받아 반영.
- */
 export function useGame(started: boolean) {
   const { players, playerId } = useRoom();
   const opponents = players.filter((p) => p.playerId !== playerId);
@@ -16,11 +13,18 @@ export function useGame(started: boolean) {
       playerName: p.playerName,
       progress: 0,
       isFinished: false,
-    }))
+    })),
   );
 
+  const onGameUpdate = useCallback((msg: GameTopicMessage) => {
+    setOpponentsState(
+      msg.players.filter((p) => p.playerId !== playerId),
+    );
+  }, [playerId]);
+
+  // mock 모드: 상대방 진행률 시뮬레이션
   useEffect(() => {
-    if (!started) return;
+    if (!useMock() || !started) return;
     const id = window.setInterval(() => {
       setOpponentsState((prev) =>
         prev.map((p) =>
@@ -30,12 +34,12 @@ export function useGame(started: boolean) {
                 ...p,
                 progress: Math.min(100, p.progress + Math.random() * 2.5),
                 isFinished: p.progress >= 100,
-              }
-        )
+              },
+        ),
       );
     }, 300);
     return () => window.clearInterval(id);
   }, [started]);
 
-  return { opponents: opponentsState };
+  return { opponents: opponentsState, onGameUpdate };
 }

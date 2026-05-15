@@ -1,20 +1,15 @@
 import { create } from "zustand";
 import type { GameResult, PlayerResponse, Screen, TextType } from "@/types";
-import { MOCK_PLAYERS } from "@/constants/mockData";
-import { pickRandomText } from "@/constants/texts";
-import { generateRoomCode } from "@/constants/mockData";
+import * as roomApi from "@/api/roomApi";
 
 interface GameState {
-  // 네비게이션
   screen: Screen;
   setScreen: (s: Screen) => void;
 
-  // 플레이어
   nickname: string;
   playerId: string | null;
   setNickname: (n: string) => void;
 
-  // 방
   roomId: string | null;
   roomCode: string | null;
   isHost: boolean;
@@ -23,9 +18,23 @@ interface GameState {
   text: string;
   players: PlayerResponse[];
 
-  createRoom: (nickname: string, textType: TextType, customText?: string) => void;
-  joinRoom: (nickname: string, roomCode: string) => void;
+  // 라운드
+  totalRounds: number;
+  currentRound: number;
+  wins: Record<string, number>;
+  roundWinnerId: string | null;
+
+  // 비동기 상태
+  isLoading: boolean;
+  error: string | null;
+  clearError: () => void;
+
+  createRoom: (nickname: string, textType: TextType, totalRounds: number, customText?: string) => Promise<void>;
+  joinRoom: (nickname: string, roomCode: string) => Promise<void>;
   leaveRoom: () => void;
+  setPlayers: (players: PlayerResponse[]) => void;
+  setText: (text: string) => void;
+  setRoundInfo: (info: { currentRound?: number; totalRounds?: number; wins?: Record<string, number>; roundWinnerId?: string }) => void;
 
   // 결과
   myResult: { wpm: number; accuracy: number } | null;
@@ -33,9 +42,10 @@ interface GameState {
   setMyResult: (r: { wpm: number; accuracy: number }) => void;
   setResults: (r: GameResult[]) => void;
   resetGame: () => void;
+  resetRound: () => void;
 }
 
-export const useGameStore = create<GameState>((set) => ({
+export const useGameStore = create<GameState>((set, get) => ({
   screen: "home",
   setScreen: (screen) => set({ screen }),
 
@@ -51,42 +61,66 @@ export const useGameStore = create<GameState>((set) => ({
   text: "",
   players: [],
 
-  createRoom: (nickname, textType, customText) => {
-    const code = generateRoomCode();
-    const text = pickRandomText(textType, customText);
-    const myId = "me";
-    set({
-      nickname,
-      playerId: myId,
-      roomId: code,
-      roomCode: code,
-      isHost: true,
-      textType,
-      text,
-      players: [
-        { playerId: myId, playerName: nickname, isHost: true },
-        ...MOCK_PLAYERS.filter((p) => !p.isHost),
-      ],
-      screen: "waiting",
-    });
+  totalRounds: 1,
+  currentRound: 1,
+  wins: {},
+  roundWinnerId: null,
+
+  isLoading: false,
+  error: null,
+  clearError: () => set({ error: null }),
+
+  createRoom: async (nickname, textType, totalRounds, customText) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await roomApi.createRoom({
+        hostName: nickname,
+        maxPlayers: get().maxPlayers,
+        textType,
+        customText,
+        totalRounds,
+      });
+      set({
+        nickname,
+        playerId: res.hostId,
+        roomId: res.roomId,
+        roomCode: res.roomCode,
+        isHost: true,
+        textType,
+        text: res.text,
+        maxPlayers: res.maxPlayers,
+        totalRounds: res.totalRounds ?? totalRounds,
+        currentRound: 1,
+        wins: {},
+        players: [{ playerId: res.hostId, playerName: nickname, isHost: true }],
+        screen: "waiting",
+        isLoading: false,
+      });
+    } catch (e: unknown) {
+      const msg = (e as { message?: string }).message ?? "Failed to create room";
+      set({ isLoading: false, error: msg });
+    }
   },
 
-  joinRoom: (nickname, roomCode) => {
-    const text = pickRandomText("english");
-    const myId = "me";
-    set({
-      nickname,
-      playerId: myId,
-      roomId: roomCode,
-      roomCode,
-      isHost: false,
-      text,
-      players: [
-        ...MOCK_PLAYERS,
-        { playerId: myId, playerName: nickname, isHost: false },
-      ],
-      screen: "waiting",
-    });
+  joinRoom: async (nickname, roomCode) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await roomApi.joinRoom(roomCode, { playerName: nickname });
+      set({
+        nickname,
+        playerId: res.playerId,
+        roomId: res.roomId,
+        roomCode: res.roomCode,
+        isHost: false,
+        text: res.text,
+        players: res.players,
+        screen: "waiting",
+        isLoading: false,
+      });
+    } catch (e: unknown) {
+      const msg = (e as { message?: string }).message ?? "Failed to join room";
+      set({ isLoading: false, error: msg });
+    }
   },
 
   leaveRoom: () =>
@@ -98,12 +132,27 @@ export const useGameStore = create<GameState>((set) => ({
       text: "",
       myResult: null,
       results: [],
+      totalRounds: 1,
+      currentRound: 1,
+      wins: {},
+      roundWinnerId: null,
       screen: "home",
     }),
+
+  setPlayers: (players) => set({ players }),
+  setText: (text) => set({ text }),
+  setRoundInfo: (info) =>
+    set((s) => ({
+      currentRound: info.currentRound ?? s.currentRound,
+      totalRounds: info.totalRounds ?? s.totalRounds,
+      wins: info.wins ?? s.wins,
+      roundWinnerId: info.roundWinnerId ?? s.roundWinnerId,
+    })),
 
   myResult: null,
   results: [],
   setMyResult: (myResult) => set({ myResult }),
   setResults: (results) => set({ results }),
-  resetGame: () => set({ myResult: null, results: [] }),
+  resetGame: () => set({ myResult: null, results: [], currentRound: 1, wins: {}, roundWinnerId: null }),
+  resetRound: () => set({ myResult: null, results: [], roundWinnerId: null }),
 }));

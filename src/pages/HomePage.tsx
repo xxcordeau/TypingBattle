@@ -12,12 +12,12 @@ import { JoinRoomForm } from "@/components/home/JoinRoomForm";
 type Tab = "create" | "join";
 
 export function HomePage() {
-  const { nickname, setNickname, createRoom, joinRoom } = useGameStore();
+  const { nickname, setNickname, createRoom, joinRoom, isLoading } = useGameStore();
   const [tab, setTab] = useState<Tab>("create");
 
-  const handleCreate = (textType: TextType, customText?: string) => {
+  const handleCreate = (textType: TextType, totalRounds: number, customText?: string) => {
     if (!nickname) return;
-    createRoom(nickname, textType, customText);
+    createRoom(nickname, textType, totalRounds, customText);
   };
 
   const handleJoin = (roomCode: string) => {
@@ -137,9 +137,9 @@ export function HomePage() {
           </div>
 
           {tab === "create" ? (
-            <CreateRoomForm disabled={!nickname} onSubmit={handleCreate} />
+            <CreateRoomForm disabled={!nickname || isLoading} onSubmit={handleCreate} />
           ) : (
-            <JoinRoomForm disabled={!nickname} onSubmit={handleJoin} />
+            <JoinRoomForm disabled={!nickname || isLoading} onSubmit={handleJoin} />
           )}
         </PixelBox>
 

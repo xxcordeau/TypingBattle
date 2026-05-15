@@ -21,8 +21,8 @@ export const TypingArea = forwardRef<HTMLTextAreaElement, Props>(function Typing
       bg = input[i] === char ? "rgba(0,119,0,0.08)" : "rgba(204,34,0,0.08)";
     }
     if (i === input.length) {
-      bg = "rgba(0,0,0,0.12)";
-      color = "#1a1a1a";
+      bg = "rgba(240,236,224,0.25)";
+      color = "#f0ece0";
     }
     return (
       <span
@@ -37,7 +37,7 @@ export const TypingArea = forwardRef<HTMLTextAreaElement, Props>(function Typing
           display: "inline-block",
         }}
       >
-        {char}
+        {char === " " ? " " : char}
       </span>
     );
   });
