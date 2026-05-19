@@ -49,7 +49,9 @@ public class Room {
 
     public void addPlayer(Player player) {
         players.add(player);
-        wins.putIfAbsent(player.getPlayerId(), 0);
+        if (!player.isSpectator()) {
+            wins.putIfAbsent(player.getPlayerId(), 0);
+        }
     }
 
     public void removePlayer(String playerId) {
@@ -59,7 +61,27 @@ public class Room {
 
     public void addResult(GameResult result) {
         results.add(result);
-        result.setRank(results.size());
+        reRankResults();
+    }
+
+    private void reRankResults() {
+        // 기권자 playerId 수집
+        java.util.Set<String> forfeitedIds = players.stream()
+            .filter(Player::isForfeited)
+            .map(Player::getPlayerId)
+            .collect(java.util.stream.Collectors.toSet());
+
+        List<GameResult> sorted = new java.util.ArrayList<>(results);
+        // 기권자는 맨 뒤, 나머지는 WPM 내림차순
+        sorted.sort((a, b) -> {
+            boolean aForf = forfeitedIds.contains(a.getPlayerId());
+            boolean bForf = forfeitedIds.contains(b.getPlayerId());
+            if (aForf != bForf) return aForf ? 1 : -1;
+            return Integer.compare(b.getWpm(), a.getWpm());
+        });
+        for (int i = 0; i < sorted.size(); i++) {
+            sorted.get(i).setRank(i + 1);
+        }
     }
 
     public void addWin(String playerId) {
@@ -70,8 +92,11 @@ public class Room {
         currentRound++;
         results.clear();
         for (Player p : players) {
-            p.setProgress(0);
-            p.setFinished(false);
+            if (!p.isSpectator()) {
+                p.setProgress(0);
+                p.setFinished(false);
+                p.setForfeited(false);
+            }
         }
         status = "playing";
     }

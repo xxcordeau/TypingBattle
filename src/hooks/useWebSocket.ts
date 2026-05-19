@@ -5,6 +5,7 @@ import { MOCK_PLAYERS } from "@/constants/mockData";
 import { useGameStore } from "@/store/useGameStore";
 import type {
   FinishPayload,
+  ForfeitPayload,
   GameTopicMessage,
   ProgressPayload,
   ResultTopicMessage,
@@ -24,6 +25,7 @@ export interface UseWebSocketResult {
   sendStart: () => void;
   sendProgress: (payload: ProgressPayload) => void;
   sendFinish: (payload: FinishPayload) => void;
+  sendForfeit: (payload: ForfeitPayload) => void;
 }
 
 export function useWebSocket(
@@ -144,5 +146,19 @@ export function useWebSocket(
     [roomId],
   );
 
-  return { status, sendStart, sendProgress, sendFinish };
+  const sendForfeit = useCallback(
+    (payload: ForfeitPayload) => {
+      if (useMock()) {
+        if (import.meta.env.DEV) console.debug("[ws] sendForfeit", payload);
+        return;
+      }
+      clientRef.current?.publish({
+        destination: `/app/game/${roomId}/forfeit`,
+        body: JSON.stringify(payload),
+      });
+    },
+    [roomId],
+  );
+
+  return { status, sendStart, sendProgress, sendFinish, sendForfeit };
 }

@@ -11,6 +11,7 @@ export function useRoom() {
       roomId: s.roomId,
       roomCode: s.roomCode,
       isHost: s.isHost,
+      isSpectator: s.isSpectator,
       maxPlayers: s.maxPlayers,
       players: s.players,
       text: s.text,
@@ -18,6 +19,8 @@ export function useRoom() {
       nickname: s.nickname,
       playerId: s.playerId,
       leaveRoom: s.leaveRoom,
+      forfeited: s.forfeited,
+      forfeit: s.forfeit,
     }))
   );
 }

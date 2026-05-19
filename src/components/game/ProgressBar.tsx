@@ -5,12 +5,22 @@ interface Props {
   progress: number;
   animate: boolean;
   label?: string;
+  forfeited?: boolean;
 }
 
-export function ProgressBar({ progress, animate, label = "YOU" }: Props) {
+export function ProgressBar({ progress, animate, label = "YOU", forfeited = false }: Props) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
-      <DinoSprite size={24} animate={animate} />
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        marginBottom: "6px",
+        opacity: forfeited ? 0.35 : 1,
+        transition: "opacity 0.3s",
+      }}
+    >
+      <DinoSprite size={24} animate={!forfeited && animate} />
       <span style={{ fontFamily: PIXEL_FONT, fontSize: "8px", color: "#f0ece0", minWidth: "40px" }}>
         {label}
       </span>
@@ -28,10 +38,26 @@ export function ProgressBar({ progress, animate, label = "YOU" }: Props) {
           style={{
             height: "100%",
             width: `${progress}%`,
-            background: "#f0ece0",
+            background: forfeited ? "#666" : "#f0ece0",
             transition: "width 0.1s linear",
           }}
         />
+        {forfeited && (
+          <span
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              fontFamily: PIXEL_FONT,
+              fontSize: "7px",
+              color: "#f0ece0",
+              letterSpacing: "2px",
+            }}
+          >
+            FORFEIT
+          </span>
+        )}
       </div>
       <span
         style={{

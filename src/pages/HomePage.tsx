@@ -26,9 +26,9 @@ export function HomePage() {
     createRoom(nickname, textType, totalRounds, customText);
   };
 
-  const handleJoin = (roomCode: string) => {
+  const handleJoin = (roomCode: string, spectator?: boolean) => {
     if (!nickname || roomCode.length !== 6) return;
-    joinRoom(nickname, roomCode);
+    joinRoom(nickname, roomCode, spectator);
   };
 
   return (
@@ -174,7 +174,7 @@ export function HomePage() {
               flexDirection: "column",
               gap: "10px",
               fontFamily: PIXEL_FONT,
-              fontSize: "7px",
+              fontSize: "10px",
               lineHeight: "1.8",
             }}
           >
@@ -183,7 +183,8 @@ export function HomePage() {
               { step: "2", ko: "방을 만들거나 코드로 참가하세요", en: "Create a room or join with a code" },
               { step: "3", ko: "친구에게 방 코드를 공유하세요", en: "Share the room code with friends" },
               { step: "4", ko: "주어진 문장을 가장 빠르게 타이핑하세요", en: "Type the given text as fast as you can" },
-              { step: "5", ko: "먼저 끝내는 사람이 승리!", en: "First to finish wins!" },
+              { step: "5", ko: "오타는 백스페이스로 지우고 다시 입력하세요", en: "Use backspace to fix typos and retype" },
+              { step: "6", ko: "먼저 끝내는 사람이 승리!", en: "First to finish wins!" },
             ].map((item) => (
               <div key={item.step} style={{ display: "flex", gap: "10px" }}>
                 <span

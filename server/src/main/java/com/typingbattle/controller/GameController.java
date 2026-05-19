@@ -1,6 +1,7 @@
 package com.typingbattle.controller;
 
 import com.typingbattle.dto.FinishPayload;
+import com.typingbattle.dto.ForfeitPayload;
 import com.typingbattle.dto.ProgressPayload;
 import com.typingbattle.model.GameResult;
 import com.typingbattle.model.Player;
@@ -14,13 +15,17 @@ import org.springframework.stereotype.Controller;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.concurrent.*;
 
 @Controller
 public class GameController {
 
+    private static final int ROUND_TIMEOUT_SECONDS = 80;
+
     private final RoomService roomService;
     private final SimpMessagingTemplate messaging;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final Map<String, ScheduledFuture<?>> timeoutFutures = new ConcurrentHashMap<>();
 
     public GameController(RoomService roomService, SimpMessagingTemplate messaging) {
         this.roomService = roomService;
@@ -50,14 +55,7 @@ public class GameController {
         if (room == null) return;
 
         Map<String, Object> msg = new LinkedHashMap<>();
-        msg.put("players", room.getPlayers().stream().map(p -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("playerId", p.getPlayerId());
-            m.put("playerName", p.getPlayerName());
-            m.put("progress", p.getProgress());
-            m.put("isFinished", p.isFinished());
-            return m;
-        }).toList());
+        msg.put("players", toGamePlayerList(room.getPlayers()));
         messaging.convertAndSend("/topic/game/" + roomId, msg);
     }
 
@@ -69,47 +67,59 @@ public class GameController {
         Room room = roomService.getRoom(roomId);
         if (room == null) return;
 
-        // 진행률 업데이트 브로드캐스트
+        boolean allFinished = roomService.isRoundFinished(roomId);
+        boolean isFirstFinish = !timeoutFutures.containsKey(roomId);
+
         Map<String, Object> progressMsg = new LinkedHashMap<>();
-        progressMsg.put("players", room.getPlayers().stream().map(p -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("playerId", p.getPlayerId());
-            m.put("playerName", p.getPlayerName());
-            m.put("progress", p.getProgress());
-            m.put("isFinished", p.isFinished());
-            return m;
-        }).toList());
+        progressMsg.put("players", toGamePlayerList(room.getPlayers()));
+        if (isFirstFinish && !allFinished) {
+            progressMsg.put("countdownSeconds", ROUND_TIMEOUT_SECONDS);
+            scheduleRoundTimeout(roomId);
+        }
         messaging.convertAndSend("/topic/game/" + roomId, progressMsg);
 
-        if (!roomService.isRoundFinished(roomId)) return;
+        if (!allFinished) return;
+
+        processRoundEnd(roomId);
+    }
+
+    @MessageMapping("/game/{roomId}/forfeit")
+    public void forfeitGame(@DestinationVariable String roomId, ForfeitPayload payload) {
+        roomService.forfeitPlayer(roomId, payload.getPlayerId());
+
+        Room room = roomService.getRoom(roomId);
+        if (room == null) return;
+
+        // 기권 상태를 다른 플레이어에게 브로드캐스트
+        Map<String, Object> progressMsg = new LinkedHashMap<>();
+        progressMsg.put("players", toGamePlayerList(room.getPlayers()));
+        messaging.convertAndSend("/topic/game/" + roomId, progressMsg);
+
+        // 모든 플레이어 완료 시 라운드 종료
+        if (roomService.isRoundFinished(roomId)) {
+            processRoundEnd(roomId);
+        }
+    }
+
+    public void processRoundEnd(String roomId) {
+        cancelRoundTimeout(roomId);
+
+        Room room = roomService.getRoom(roomId);
+        if (room == null) return;
 
         String winnerId = roomService.getRoundWinner(roomId);
 
-        // 라운드 결과 브로드캐스트
         Map<String, Object> roundMsg = new LinkedHashMap<>();
         roundMsg.put("type", "ROUND_RESULT");
         roundMsg.put("currentRound", room.getCurrentRound());
         roundMsg.put("totalRounds", room.getTotalRounds());
         roundMsg.put("roundWinnerId", winnerId);
-        roundMsg.put("results", room.getResults().stream().map(r -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("rank", r.getRank());
-            m.put("playerId", r.getPlayerId());
-            m.put("playerName", r.getPlayerName());
-            m.put("wpm", r.getWpm());
-            m.put("accuracy", r.getAccuracy());
-            return m;
-        }).toList());
+        roundMsg.put("results", toResultList(room));
         roundMsg.put("wins", room.getWins());
         messaging.convertAndSend("/topic/result/" + roomId, roundMsg);
 
         if (roomService.isGameOver(roomId)) {
-            room.setStatus("finished");
-            Map<String, Object> finalMsg = new LinkedHashMap<>();
-            finalMsg.put("type", "GAME_OVER");
-            finalMsg.put("wins", room.getWins());
-            finalMsg.put("results", room.getResults());
-            messaging.convertAndSend("/topic/result/" + roomId, finalMsg);
+            sendGameOver(roomId, room);
         } else {
             roomService.prepareNextRound(roomId);
 
@@ -121,6 +131,70 @@ public class GameController {
             nextMsg.put("wins", room.getWins());
             messaging.convertAndSend("/topic/result/" + roomId, nextMsg);
         }
+    }
+
+    public void sendGameOver(String roomId, Room room) {
+        cancelRoundTimeout(roomId);
+        room.setStatus("finished");
+        Map<String, Object> finalMsg = new LinkedHashMap<>();
+        finalMsg.put("type", "GAME_OVER");
+        finalMsg.put("wins", room.getWins());
+        finalMsg.put("results", toResultList(room));
+        messaging.convertAndSend("/topic/result/" + roomId, finalMsg);
+    }
+
+    public void broadcastGameProgress(String roomId, Room room) {
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("players", toGamePlayerList(room.getPlayers()));
+        messaging.convertAndSend("/topic/game/" + roomId, msg);
+    }
+
+    private void scheduleRoundTimeout(String roomId) {
+        cancelRoundTimeout(roomId);
+        ScheduledFuture<?> future = scheduler.schedule(
+            () -> handleRoundTimeout(roomId),
+            ROUND_TIMEOUT_SECONDS, TimeUnit.SECONDS
+        );
+        timeoutFutures.put(roomId, future);
+    }
+
+    public void cancelRoundTimeout(String roomId) {
+        ScheduledFuture<?> existing = timeoutFutures.remove(roomId);
+        if (existing != null) existing.cancel(false);
+    }
+
+    private synchronized void handleRoundTimeout(String roomId) {
+        timeoutFutures.remove(roomId);
+        if (roomService.isRoundFinished(roomId)) return;
+
+        roomService.forceFinishUnfinished(roomId);
+        processRoundEnd(roomId);
+    }
+
+    private List<Map<String, Object>> toGamePlayerList(List<Player> players) {
+        return players.stream().map(p -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("playerId", p.getPlayerId());
+            m.put("playerName", p.getPlayerName());
+            m.put("progress", p.getProgress());
+            m.put("isFinished", p.isFinished());
+            m.put("forfeited", p.isForfeited());
+            return m;
+        }).toList();
+    }
+
+    private List<Map<String, Object>> toResultList(Room room) {
+        return room.getResults().stream()
+            .sorted(java.util.Comparator.comparingInt(GameResult::getRank))
+            .map(r -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("rank", r.getRank());
+                m.put("playerId", r.getPlayerId());
+                m.put("playerName", r.getPlayerName());
+                m.put("wpm", r.getWpm());
+                m.put("accuracy", r.getAccuracy());
+                return m;
+            }).toList();
     }
 
     private List<Map<String, Object>> toPlayerList(List<Player> players) {

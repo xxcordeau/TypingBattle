@@ -9,6 +9,7 @@ export interface PlayerResponse {
   playerName: string;
   isHost: boolean;
   isReady?: boolean;
+  isSpectator?: boolean;
 }
 
 export interface GamePlayer {
@@ -16,6 +17,7 @@ export interface GamePlayer {
   playerName: string;
   progress: number;
   isFinished: boolean;
+  forfeited?: boolean;
   rank?: number;
 }
 
@@ -39,6 +41,7 @@ export interface CreateRoomResponse {
 
 export interface JoinRoomRequest {
   playerName: string;
+  spectator?: boolean;
 }
 
 export interface JoinRoomResponse {
@@ -47,6 +50,8 @@ export interface JoinRoomResponse {
   roomCode: string;
   text: string;
   players: PlayerResponse[];
+  isSpectator?: boolean;
+  status?: string;
 }
 
 export interface GameResult {
@@ -65,7 +70,7 @@ export interface ResultResponse {
 
 // ── WebSocket payload types ───────────────────
 export type RoomTopicMessage = {
-  type: "PLAYER_JOINED" | "PLAYER_LEFT" | "GAME_START";
+  type: "PLAYER_JOINED" | "PLAYER_LEFT" | "GAME_START" | "ROOM_CLOSED";
   players: PlayerResponse[];
   totalRounds?: number;
   currentRound?: number;
@@ -73,6 +78,7 @@ export type RoomTopicMessage = {
 
 export type GameTopicMessage = {
   players: GamePlayer[];
+  countdownSeconds?: number;
 };
 
 export type ResultTopicMessage = {
@@ -95,6 +101,10 @@ export interface FinishPayload {
   playerId: string;
   wpm: number;
   accuracy: number;
+}
+
+export interface ForfeitPayload {
+  playerId: string;
 }
 
 export interface ApiError {

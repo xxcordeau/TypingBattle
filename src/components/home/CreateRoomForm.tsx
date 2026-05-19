@@ -8,11 +8,11 @@ interface Props {
   onSubmit: (textType: TextType, totalRounds: number, customText?: string) => void;
 }
 
-const OPTIONS: TextType[] = ["english", "korean", "custom"];
+const OPTIONS: TextType[] = ["korean", "english", "custom"];
 const ROUND_OPTIONS = [1, 3, 5] as const;
 
 export function CreateRoomForm({ disabled, onSubmit }: Props) {
-  const [textType, setTextType] = useState<TextType>("english");
+  const [textType, setTextType] = useState<TextType>("korean");
   const [customText, setCustomText] = useState("");
   const [totalRounds, setTotalRounds] = useState<number>(1);
 

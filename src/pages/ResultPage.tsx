@@ -25,10 +25,12 @@ export function ResultPage() {
     });
   }, [roomId, setResults, results.length]);
 
+  const activePlayers = players.filter((p) => !p.isSpectator);
   const sortedWins = Object.entries(wins)
+    .filter(([pid]) => activePlayers.some((p) => p.playerId === pid))
     .map(([pid, w]) => ({
       pid,
-      name: players.find((p) => p.playerId === pid)?.playerName ?? pid,
+      name: activePlayers.find((p) => p.playerId === pid)?.playerName ?? pid,
       wins: w,
     }))
     .sort((a, b) => b.wins - a.wins);

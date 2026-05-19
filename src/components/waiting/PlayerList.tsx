@@ -55,6 +55,20 @@ export function PlayerList({ players, dots, emptySlotCount }: Props) {
                 HOST
               </span>
             )}
+            {p.isSpectator && (
+              <span
+                style={{
+                  fontFamily: PIXEL_FONT,
+                  fontSize: "7px",
+                  color: "#888",
+                  background: "#eee",
+                  padding: "3px 6px",
+                  border: "1px solid #ccc",
+                }}
+              >
+                SPECTATOR
+              </span>
+            )}
           </div>
         ))}
 

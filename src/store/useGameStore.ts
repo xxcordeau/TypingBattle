@@ -13,6 +13,7 @@ interface GameState {
   roomId: string | null;
   roomCode: string | null;
   isHost: boolean;
+  isSpectator: boolean;
   maxPlayers: number;
   textType: TextType;
   text: string;
@@ -30,11 +31,15 @@ interface GameState {
   clearError: () => void;
 
   createRoom: (nickname: string, textType: TextType, totalRounds: number, customText?: string) => Promise<void>;
-  joinRoom: (nickname: string, roomCode: string) => Promise<void>;
+  joinRoom: (nickname: string, roomCode: string, spectator?: boolean) => Promise<void>;
   leaveRoom: () => void;
   setPlayers: (players: PlayerResponse[]) => void;
   setText: (text: string) => void;
   setRoundInfo: (info: { currentRound?: number; totalRounds?: number; wins?: Record<string, number>; roundWinnerId?: string }) => void;
+
+  // 기권
+  forfeited: boolean;
+  forfeit: () => void;
 
   // 결과
   myResult: { wpm: number; accuracy: number } | null;
@@ -56,8 +61,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   roomId: null,
   roomCode: null,
   isHost: false,
+  isSpectator: false,
   maxPlayers: 8,
-  textType: "english",
+  textType: "korean",
   text: "",
   players: [],
 
@@ -102,19 +108,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  joinRoom: async (nickname, roomCode) => {
+  joinRoom: async (nickname, roomCode, spectator) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await roomApi.joinRoom(roomCode, { playerName: nickname });
+      const res = await roomApi.joinRoom(roomCode, { playerName: nickname, spectator });
+      const isSpectator = res.isSpectator ?? false;
+      const screen = res.status === "playing" ? "game" : "waiting";
       set({
         nickname,
         playerId: res.playerId,
         roomId: res.roomId,
         roomCode: res.roomCode,
         isHost: false,
+        isSpectator,
         text: res.text,
         players: res.players,
-        screen: "waiting",
+        screen,
         isLoading: false,
       });
     } catch (e: unknown) {
@@ -123,11 +132,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  leaveRoom: () =>
+  leaveRoom: () => {
+    const { roomCode, playerId } = get();
+    if (roomCode && playerId) {
+      roomApi.leaveRoom(roomCode, playerId).catch(() => {});
+    }
     set({
       roomId: null,
       roomCode: null,
       isHost: false,
+      isSpectator: false,
       players: [],
       text: "",
       myResult: null,
@@ -136,8 +150,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentRound: 1,
       wins: {},
       roundWinnerId: null,
+      forfeited: false,
       screen: "home",
-    }),
+    });
+  },
+
+  forfeited: false,
+  forfeit: () => set({ forfeited: true }),
 
   setPlayers: (players) => set({ players }),
   setText: (text) => set({ text }),
@@ -153,6 +172,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   results: [],
   setMyResult: (myResult) => set({ myResult }),
   setResults: (results) => set({ results }),
-  resetGame: () => set({ myResult: null, results: [], currentRound: 1, wins: {}, roundWinnerId: null }),
-  resetRound: () => set({ myResult: null, results: [], roundWinnerId: null }),
+  resetGame: () => set({ myResult: null, results: [], currentRound: 1, wins: {}, roundWinnerId: null, forfeited: false }),
+  resetRound: () => set({ myResult: null, results: [], roundWinnerId: null, forfeited: false }),
 }));

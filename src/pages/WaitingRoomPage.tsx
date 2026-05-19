@@ -10,7 +10,7 @@ import { StartButton } from "@/components/waiting/StartButton";
 import { ConnectionBadge } from "@/components/common/ConnectionBadge";
 
 export function WaitingRoomPage() {
-  const { roomId, roomCode, players, isHost, maxPlayers, leaveRoom } = useRoom();
+  const { roomId, roomCode, players, isHost, maxPlayers, textType, leaveRoom } = useRoom();
   const setScreen = useGameStore((s) => s.setScreen);
   const setPlayers = useGameStore((s) => s.setPlayers);
   const setRoundInfo = useGameStore((s) => s.setRoundInfo);
@@ -19,6 +19,10 @@ export function WaitingRoomPage() {
 
   const onRoomUpdate = useCallback(
     (msg: RoomTopicMessage) => {
+      if (msg.type === "ROOM_CLOSED") {
+        leaveRoom();
+        return;
+      }
       setPlayers(msg.players);
       if (msg.type === "GAME_START") {
         if (msg.totalRounds != null || msg.currentRound != null) {
@@ -27,7 +31,7 @@ export function WaitingRoomPage() {
         setScreen("game");
       }
     },
-    [setPlayers, setScreen, setRoundInfo],
+    [setPlayers, setScreen, setRoundInfo, leaveRoom],
   );
 
   const ws = useWebSocket(roomId, { onRoomUpdate });
@@ -44,7 +48,7 @@ export function WaitingRoomPage() {
     setScreen("game");
   };
 
-  const emptySlotCount = Math.max(0, Math.min(maxPlayers, 3) - players.length);
+  const emptySlotCount = Math.max(0, Math.min(maxPlayers, 5) - players.length);
 
   return (
     <div
@@ -90,6 +94,34 @@ export function WaitingRoomPage() {
 
         <RoomCodeShare roomCode={roomCode ?? ""} />
 
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            padding: "10px 16px",
+            marginBottom: "16px",
+            border: "3px solid #1a1a1a",
+            background: "#fff",
+          }}
+        >
+          <span style={{ fontFamily: PIXEL_FONT, fontSize: "8px", color: "#888" }}>
+            LANGUAGE
+          </span>
+          <span
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: "10px",
+              color: "#1a1a1a",
+              letterSpacing: "2px",
+              fontWeight: "bold",
+            }}
+          >
+            {textType === "korean" ? "KOR" : textType === "english" ? "ENG" : "CUSTOM"}
+          </span>
+        </div>
+
         {totalRounds > 1 && (
           <div
             style={{
@@ -107,7 +139,7 @@ export function WaitingRoomPage() {
 
         <PlayerList players={players} dots={dots} emptySlotCount={emptySlotCount} />
 
-        <StartButton onStart={handleStart} disabled={players.length < 2} isHost={isHost} />
+        <StartButton onStart={handleStart} disabled={false} isHost={isHost} />
       </div>
     </div>
   );

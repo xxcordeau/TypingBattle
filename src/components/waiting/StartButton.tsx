@@ -26,7 +26,7 @@ export function StartButton({ onStart, disabled, isHost }: Props) {
           marginTop: "10px",
         }}
       >
-        * host only · min 2 players
+        * host only · 1~8 players
       </div>
     </>
   );

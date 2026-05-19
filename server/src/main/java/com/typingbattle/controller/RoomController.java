@@ -20,10 +20,12 @@ public class RoomController {
 
     private final RoomService roomService;
     private final SimpMessagingTemplate messaging;
+    private final GameController gameController;
 
-    public RoomController(RoomService roomService, SimpMessagingTemplate messaging) {
+    public RoomController(RoomService roomService, SimpMessagingTemplate messaging, GameController gameController) {
         this.roomService = roomService;
         this.messaging = messaging;
+        this.gameController = gameController;
     }
 
     @PostMapping
@@ -45,10 +47,9 @@ public class RoomController {
     @PostMapping("/{roomCode}/join")
     public ResponseEntity<?> joinRoom(@PathVariable String roomCode, @RequestBody JoinRoomRequest req) {
         try {
-            Player player = roomService.joinRoom(roomCode, req.getPlayerName());
+            Player player = roomService.joinRoom(roomCode, req.getPlayerName(), req.isSpectator());
             Room room = roomService.getRoom(roomCode);
 
-            // WebSocket으로 대기실에 알림
             Map<String, Object> wsMsg = new LinkedHashMap<>();
             wsMsg.put("type", "PLAYER_JOINED");
             wsMsg.put("players", toPlayerList(room.getPlayers()));
@@ -60,6 +61,8 @@ public class RoomController {
             res.put("roomCode", room.getRoomCode());
             res.put("text", room.getText());
             res.put("players", toPlayerList(room.getPlayers()));
+            res.put("isSpectator", player.isSpectator());
+            res.put("status", room.getStatus());
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
@@ -70,14 +73,38 @@ public class RoomController {
 
     @DeleteMapping("/{roomCode}/leave")
     public ResponseEntity<?> leaveRoom(@PathVariable String roomCode, @RequestBody LeaveRoomRequest req) {
+        Room room = roomService.getRoom(roomCode);
+        String statusBefore = room != null ? room.getStatus() : null;
+
         roomService.leaveRoom(roomCode, req.getPlayerId());
 
-        Room room = roomService.getRoom(roomCode);
-        if (room != null) {
-            Map<String, Object> wsMsg = new LinkedHashMap<>();
-            wsMsg.put("type", "PLAYER_LEFT");
-            wsMsg.put("players", toPlayerList(room.getPlayers()));
-            messaging.convertAndSend("/topic/room/" + room.getRoomId(), wsMsg);
+        room = roomService.getRoom(roomCode);
+        if (room == null) return ResponseEntity.noContent().build();
+
+        long activePlayers = room.getPlayers().stream().filter(p -> !p.isSpectator()).count();
+
+        // Notify remaining players
+        Map<String, Object> wsMsg = new LinkedHashMap<>();
+        wsMsg.put("type", "PLAYER_LEFT");
+        wsMsg.put("players", toPlayerList(room.getPlayers()));
+        messaging.convertAndSend("/topic/room/" + room.getRoomId(), wsMsg);
+
+        if (activePlayers == 0) {
+            Map<String, Object> closedMsg = new LinkedHashMap<>();
+            closedMsg.put("type", "ROOM_CLOSED");
+            messaging.convertAndSend("/topic/room/" + room.getRoomId(), closedMsg);
+            roomService.removeRoom(roomCode);
+        } else if ("playing".equals(statusBefore)) {
+            // Update game progress (remove left player's bar)
+            gameController.broadcastGameProgress(room.getRoomId(), room);
+
+            if (activePlayers <= 1) {
+                // Only 1 player left → game over
+                gameController.sendGameOver(room.getRoomId(), room);
+            } else if (roomService.isRoundFinished(roomCode)) {
+                // All remaining players already finished → process round end
+                gameController.processRoundEnd(room.getRoomId());
+            }
         }
 
         return ResponseEntity.noContent().build();
@@ -102,6 +129,7 @@ public class RoomController {
             m.put("playerId", p.getPlayerId());
             m.put("playerName", p.getPlayerName());
             m.put("isHost", p.isHost());
+            m.put("isSpectator", p.isSpectator());
             return m;
         }).toList();
     }
