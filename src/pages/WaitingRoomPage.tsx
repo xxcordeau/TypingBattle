@@ -6,9 +6,10 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { PlayerList } from "@/components/waiting/PlayerList";
 import { RoomCodeShare } from "@/components/waiting/RoomCodeShare";
 import { StartButton } from "@/components/waiting/StartButton";
+import { PixelBox } from "@/components/common/PixelBox";
 
 export function WaitingRoomPage() {
-  const { roomId, roomCode, players, isHost, maxPlayers, leaveRoom } = useRoom();
+  const { roomId, roomCode, players, isHost, maxPlayers, textType, leaveRoom } = useRoom();
   const setScreen = useGameStore((s) => s.setScreen);
   const [dots, setDots] = useState("");
 
@@ -74,6 +75,32 @@ export function WaitingRoomPage() {
         </div>
 
         <RoomCodeShare roomCode={roomCode ?? ""} />
+
+        <PixelBox
+          style={{
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            padding: "10px 16px",
+          }}
+        >
+          <span style={{ fontFamily: PIXEL_FONT, fontSize: "8px", color: "#888" }}>
+            LANGUAGE
+          </span>
+          <span
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: "10px",
+              color: "#1a1a1a",
+              letterSpacing: "2px",
+              fontWeight: "bold",
+            }}
+          >
+            {textType === "korean" ? "KOR" : textType === "english" ? "ENG" : "CUSTOM"}
+          </span>
+        </PixelBox>
 
         <PlayerList players={players} dots={dots} emptySlotCount={emptySlotCount} />
 

@@ -16,6 +16,7 @@ export function useGame(started: boolean) {
       playerName: p.playerName,
       progress: 0,
       isFinished: false,
+      forfeited: false,
     }))
   );
 
@@ -24,7 +25,7 @@ export function useGame(started: boolean) {
     const id = window.setInterval(() => {
       setOpponentsState((prev) =>
         prev.map((p) =>
-          p.isFinished
+          p.isFinished || p.forfeited
             ? p
             : {
                 ...p,

@@ -18,6 +18,8 @@ export function useRoom() {
       nickname: s.nickname,
       playerId: s.playerId,
       leaveRoom: s.leaveRoom,
+      forfeited: s.forfeited,
+      forfeit: s.forfeit,
     }))
   );
 }

@@ -16,6 +16,7 @@ export interface GamePlayer {
   playerName: string;
   progress: number;
   isFinished: boolean;
+  forfeited: boolean;
   rank?: number;
 }
 
@@ -44,6 +45,7 @@ export interface JoinRoomResponse {
   roomId: string;
   roomCode: string;
   text: string;
+  textType: TextType;
   players: PlayerResponse[];
 }
 
@@ -85,4 +87,8 @@ export interface FinishPayload {
   playerId: string;
   wpm: number;
   accuracy: number;
+}
+
+export interface ForfeitPayload {
+  playerId: string;
 }

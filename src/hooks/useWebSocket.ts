@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type {
   FinishPayload,
+  ForfeitPayload,
   GameTopicMessage,
   ProgressPayload,
   ResultTopicMessage,
@@ -21,6 +22,7 @@ import type {
  *   /app/room/{roomId}/start
  *   /app/game/{roomId}/progress
  *   /app/game/{roomId}/finish
+ *   /app/game/{roomId}/forfeit
  */
 
 type Handlers = {
@@ -34,6 +36,7 @@ export interface UseWebSocketResult {
   sendStart: () => void;
   sendProgress: (payload: ProgressPayload) => void;
   sendFinish: (payload: FinishPayload) => void;
+  sendForfeit: (payload: ForfeitPayload) => void;
 }
 
 export function useWebSocket(
@@ -89,10 +92,19 @@ export function useWebSocket(
     [roomId]
   );
 
+  const sendForfeit = useCallback(
+    (payload: ForfeitPayload) => {
+      // client.publish({ destination: `/app/game/${roomId}/forfeit`, body: JSON.stringify(payload) });
+      if (import.meta.env.DEV) console.debug("[ws] sendForfeit", payload);
+    },
+    [roomId]
+  );
+
   return {
     connected: roomId !== null,
     sendStart,
     sendProgress,
     sendFinish,
+    sendForfeit,
   };
 }

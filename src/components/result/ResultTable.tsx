@@ -16,6 +16,7 @@ export function ResultTable({ results }: Props) {
           wpm={r.wpm}
           accuracy={r.accuracy}
           animationDelay={i * 0.1}
+          forfeited={r.finishedAt === null && r.wpm === 0}
         />
       ))}
     </div>

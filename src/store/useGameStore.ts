@@ -27,6 +27,10 @@ interface GameState {
   joinRoom: (nickname: string, roomCode: string) => void;
   leaveRoom: () => void;
 
+  // 기권
+  forfeited: boolean;
+  forfeit: () => void;
+
   // 결과
   myResult: { wpm: number; accuracy: number } | null;
   results: GameResult[];
@@ -47,7 +51,7 @@ export const useGameStore = create<GameState>((set) => ({
   roomCode: null,
   isHost: false,
   maxPlayers: 8,
-  textType: "english",
+  textType: "korean",
   text: "",
   players: [],
 
@@ -72,7 +76,7 @@ export const useGameStore = create<GameState>((set) => ({
   },
 
   joinRoom: (nickname, roomCode) => {
-    const text = pickRandomText("english");
+    const text = pickRandomText("korean");
     const myId = "me";
     set({
       nickname,
@@ -98,12 +102,16 @@ export const useGameStore = create<GameState>((set) => ({
       text: "",
       myResult: null,
       results: [],
+      forfeited: false,
       screen: "home",
     }),
+
+  forfeited: false,
+  forfeit: () => set({ forfeited: true }),
 
   myResult: null,
   results: [],
   setMyResult: (myResult) => set({ myResult }),
   setResults: (results) => set({ results }),
-  resetGame: () => set({ myResult: null, results: [] }),
+  resetGame: () => set({ myResult: null, results: [], forfeited: false }),
 }));

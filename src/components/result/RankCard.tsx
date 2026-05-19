@@ -8,15 +8,16 @@ interface Props {
   wpm: number;
   accuracy: number;
   animationDelay: number;
+  forfeited?: boolean;
 }
 
 const RANK_LABELS = ["1ST", "2ND", "3RD"];
 const RANK_COLORS = ["#f0c040", "#aaaaaa", "#cd7f32"];
 
-export function RankCard({ rank, name, wpm, accuracy, animationDelay }: Props) {
-  const isFirst = rank === 1;
-  const label = RANK_LABELS[rank - 1] ?? `${rank}TH`;
-  const rankColor = isFirst ? "#f0c040" : RANK_COLORS[rank - 1] ?? "#888";
+export function RankCard({ rank, name, wpm, accuracy, animationDelay, forfeited = false }: Props) {
+  const isFirst = rank === 1 && !forfeited;
+  const label = forfeited ? "—" : (RANK_LABELS[rank - 1] ?? `${rank}TH`);
+  const rankColor = forfeited ? "#888" : isFirst ? "#f0c040" : RANK_COLORS[rank - 1] ?? "#888";
 
   return (
     <div
@@ -25,11 +26,11 @@ export function RankCard({ rank, name, wpm, accuracy, animationDelay }: Props) {
         alignItems: "center",
         gap: "14px",
         padding: "16px",
-        background: isFirst ? "#1a1a1a" : "#fff",
-        border: "3px solid #1a1a1a",
-        boxShadow: isFirst ? "5px 5px 0px #555" : "3px 3px 0px #aaa",
+        background: forfeited ? "#e8e4d8" : isFirst ? "#1a1a1a" : "#fff",
+        border: `3px solid ${forfeited ? "#bbb" : "#1a1a1a"}`,
+        boxShadow: forfeited ? "none" : isFirst ? "5px 5px 0px #555" : "3px 3px 0px #aaa",
+        opacity: forfeited ? 0.6 : 1,
         animation: `rankReveal 0.4s ${animationDelay}s ease both`,
-        opacity: 0,
         animationFillMode: "forwards",
       }}
     >
@@ -52,7 +53,7 @@ export function RankCard({ rank, name, wpm, accuracy, animationDelay }: Props) {
           style={{
             fontFamily: PIXEL_FONT,
             fontSize: "9px",
-            color: isFirst ? "#f0ece0" : "#1a1a1a",
+            color: forfeited ? "#999" : isFirst ? "#f0ece0" : "#1a1a1a",
             marginBottom: "4px",
           }}
         >
@@ -62,33 +63,35 @@ export function RankCard({ rank, name, wpm, accuracy, animationDelay }: Props) {
           style={{
             fontFamily: PIXEL_FONT,
             fontSize: "7px",
-            color: isFirst ? "#888" : "#aaa",
+            color: forfeited ? "#bbb" : isFirst ? "#888" : "#aaa",
           }}
         >
-          {accuracy}% accuracy
+          {forfeited ? "FORFEITED" : `${accuracy}% accuracy`}
         </div>
       </div>
 
-      <div style={{ textAlign: "right" }}>
-        <div
-          style={{
-            fontFamily: PIXEL_FONT,
-            fontSize: "16px",
-            color: isFirst ? "#f0c040" : "#1a1a1a",
-          }}
-        >
-          {wpm}
+      {!forfeited && (
+        <div style={{ textAlign: "right" }}>
+          <div
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: "16px",
+              color: isFirst ? "#f0c040" : "#1a1a1a",
+            }}
+          >
+            {wpm}
+          </div>
+          <div
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: "6px",
+              color: isFirst ? "#888" : "#aaa",
+            }}
+          >
+            WPM
+          </div>
         </div>
-        <div
-          style={{
-            fontFamily: PIXEL_FONT,
-            fontSize: "6px",
-            color: isFirst ? "#888" : "#aaa",
-          }}
-        >
-          WPM
-        </div>
-      </div>
+      )}
     </div>
   );
 }

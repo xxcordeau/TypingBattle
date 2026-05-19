@@ -18,9 +18,23 @@ export function ResultPage() {
     });
   }, [roomId, setResults]);
 
+  const forfeited = useGameStore((s) => s.forfeited);
+
   // 내 결과를 상단에 머지 (mock)
   const merged: GameResult[] = useMemo(() => {
     const base = results.length ? results : MOCK_RESULTS;
+    if (forfeited) {
+      // 기권한 경우: 맨 뒤에 추가
+      const me: GameResult = {
+        rank: base.length + 1,
+        playerId: "me",
+        playerName: nickname || "YOU",
+        wpm: 0,
+        accuracy: 0,
+        finishedAt: null,
+      };
+      return [...base, me];
+    }
     if (!myResult) return base;
     const me: GameResult = {
       rank: 1,
@@ -31,7 +45,7 @@ export function ResultPage() {
       finishedAt: new Date().toISOString(),
     };
     return [me, ...base.slice(1)];
-  }, [results, myResult, nickname]);
+  }, [results, myResult, nickname, forfeited]);
 
   const handleReplay = () => {
     resetGame();

@@ -12,7 +12,7 @@ import { OtherPlayersBar } from "@/components/game/OtherPlayersBar";
 import { TypingArea } from "@/components/game/TypingArea";
 
 export function GamePage() {
-  const { roomId, text, nickname, playerId } = useRoom();
+  const { roomId, text, nickname, playerId, forfeited, forfeit } = useRoom();
   const setScreen = useGameStore((s) => s.setScreen);
   const setMyResult = useGameStore((s) => s.setMyResult);
 
@@ -23,7 +23,7 @@ export function GamePage() {
   const typing = useTyping(text);
   const { start: startTyping, tick, progress, currentIndex, metrics } = typing;
   const { opponents } = useGame(started);
-  const { sendProgress, sendFinish } = useWebSocket(roomId);
+  const { sendProgress, sendFinish, sendForfeit } = useWebSocket(roomId);
 
   // 카운트다운
   useEffect(() => {
@@ -44,11 +44,18 @@ export function GamePage() {
     return () => window.clearInterval(id);
   }, [started, tick]);
 
-  // 진행률 서버 전송
+  // 진행률 서버 전송 (기권 시 중지)
   useEffect(() => {
-    if (!started || !playerId) return;
+    if (!started || !playerId || forfeited) return;
     sendProgress({ playerId, progress, currentIndex });
-  }, [progress, currentIndex, started, playerId, sendProgress]);
+  }, [progress, currentIndex, started, playerId, forfeited, sendProgress]);
+
+  // 기권 핸들러
+  const handleForfeit = () => {
+    if (!playerId || forfeited) return;
+    forfeit();
+    sendForfeit({ playerId });
+  };
 
   // 완료 감지
   useEffect(() => {
@@ -60,6 +67,17 @@ export function GamePage() {
     }
     return undefined;
   }, [metrics, playerId, sendFinish, setMyResult, setScreen]);
+
+  // 기권 상태에서 모든 상대 완료 시 결과 화면 이동
+  useEffect(() => {
+    if (!forfeited || opponents.length === 0) return;
+    const allDone = opponents.every((p) => p.isFinished || p.forfeited);
+    if (allDone) {
+      const id = window.setTimeout(() => setScreen("result"), 1000);
+      return () => window.clearTimeout(id);
+    }
+    return undefined;
+  }, [forfeited, opponents, setScreen]);
 
   return (
     <div
@@ -125,28 +143,85 @@ export function GamePage() {
           <div style={{ fontFamily: PIXEL_FONT, fontSize: "9px", color: "#888" }}>
             TYPING BATTLE
           </div>
-          <div style={{ fontFamily: PIXEL_FONT, fontSize: "9px", color: "#f0ece0" }}>
-            {typing.progress}%
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {started && !forfeited && !metrics && (
+              <button
+                onClick={handleForfeit}
+                style={{
+                  fontFamily: PIXEL_FONT,
+                  fontSize: "7px",
+                  padding: "4px 10px",
+                  background: "transparent",
+                  border: "2px solid #c44",
+                  color: "#c44",
+                  cursor: "pointer",
+                  letterSpacing: "1px",
+                }}
+              >
+                FORFEIT
+              </button>
+            )}
+            <div style={{ fontFamily: PIXEL_FONT, fontSize: "9px", color: "#f0ece0" }}>
+              {typing.progress}%
+            </div>
           </div>
         </div>
 
         <div style={{ marginBottom: "20px" }}>
           <ProgressBar
             progress={typing.progress}
-            animate={started && typing.progress < 100}
+            animate={started && !forfeited && typing.progress < 100}
             label={nickname || "YOU"}
+            forfeited={forfeited}
           />
           <OtherPlayersBar players={opponents} />
         </div>
 
-        <TypingArea
-          ref={inputRef}
-          text={text}
-          input={typing.input}
-          shakeIndex={typing.shakeIndex}
-          started={started}
-          onChange={(e) => typing.handleChange(e.target.value)}
-        />
+        {/* 기권 시 관전 오버레이 */}
+        {forfeited && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "24px 16px",
+              marginBottom: "12px",
+              border: "2px solid #555",
+              background: "rgba(0,0,0,0.4)",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: PIXEL_FONT,
+                fontSize: "12px",
+                color: "#c44",
+                letterSpacing: "3px",
+                marginBottom: "8px",
+              }}
+            >
+              FORFEITED
+            </div>
+            <div
+              style={{
+                fontFamily: PIXEL_FONT,
+                fontSize: "7px",
+                color: "#888",
+                animation: "blink 1.2s step-end infinite",
+              }}
+            >
+              watching other players...
+            </div>
+          </div>
+        )}
+
+        {!forfeited && (
+          <TypingArea
+            ref={inputRef}
+            text={text}
+            input={typing.input}
+            shakeIndex={typing.shakeIndex}
+            started={started}
+            onChange={(e) => typing.handleChange(e.target.value)}
+          />
+        )}
 
         <div
           style={{
@@ -157,7 +232,7 @@ export function GamePage() {
             textAlign: "center",
           }}
         >
-          <DinoSprite size={14} /> {typing.input.length} / {text.length} characters
+          <DinoSprite size={14} color="#777" eyeColor="#1a1a1a" /> {typing.input.length} / {text.length} characters
         </div>
       </div>
     </div>
