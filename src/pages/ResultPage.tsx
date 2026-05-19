@@ -1,56 +1,50 @@
-import { useEffect, useMemo } from "react";
-import type { GameResult } from "@/types";
+import { useEffect } from "react";
 import { PIXEL_FONT } from "@/styles/globalStyles";
 import { useGameStore } from "@/store/useGameStore";
-import { MOCK_RESULTS } from "@/constants/mockData";
 import { fetchResult } from "@/api/roomApi";
 import { PixelButton } from "@/components/common/PixelButton";
+import { PixelBox } from "@/components/common/PixelBox";
 import { ResultTable } from "@/components/result/ResultTable";
 
 export function ResultPage() {
-  const { roomId, nickname, myResult, results, setResults, setScreen, resetGame, leaveRoom } =
-    useGameStore();
+  const {
+    roomId,
+    playerId,
+    results,
+    setResults,
+    leaveRoom,
+    totalRounds,
+    wins,
+    players,
+  } = useGameStore();
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || results.length > 0) return;
     fetchResult(roomId).then((res) => {
       setResults(res.results);
     });
-  }, [roomId, setResults]);
+  }, [roomId, setResults, results.length]);
 
-  const forfeited = useGameStore((s) => s.forfeited);
+  const activePlayers = players.filter((p) => !p.isSpectator);
+  const sortedWins = Object.entries(wins)
+    .filter(([pid]) => activePlayers.some((p) => p.playerId === pid))
+    .map(([pid, w]) => ({
+      pid,
+      name: activePlayers.find((p) => p.playerId === pid)?.playerName ?? pid,
+      wins: w,
+    }))
+    .sort((a, b) => b.wins - a.wins);
 
-  // 내 결과를 상단에 머지 (mock)
-  const merged: GameResult[] = useMemo(() => {
-    const base = results.length ? results : MOCK_RESULTS;
-    if (forfeited) {
-      // 기권한 경우: 맨 뒤에 추가
-      const me: GameResult = {
-        rank: base.length + 1,
-        playerId: "me",
-        playerName: nickname || "YOU",
-        wpm: 0,
-        accuracy: 0,
-        finishedAt: null,
-      };
-      return [...base, me];
-    }
-    if (!myResult) return base;
-    const me: GameResult = {
-      rank: 1,
-      playerId: "me",
-      playerName: nickname || "YOU",
-      wpm: myResult.wpm,
-      accuracy: myResult.accuracy,
-      finishedAt: new Date().toISOString(),
-    };
-    return [me, ...base.slice(1)];
-  }, [results, myResult, nickname, forfeited]);
-
-  const handleReplay = () => {
-    resetGame();
-    setScreen("game");
-  };
+  const firstPlace = results.find((r) => r.rank === 1);
+  const winnerName =
+    totalRounds > 1 && sortedWins.length > 0
+      ? sortedWins[0].name
+      : firstPlace?.playerName;
+  const winnerId =
+    totalRounds > 1 && sortedWins.length > 0
+      ? sortedWins[0].pid
+      : firstPlace?.playerId;
+  const iWon = winnerId === playerId;
 
   return (
     <div
@@ -76,20 +70,62 @@ export function ResultPage() {
           >
             GAME OVER
           </div>
+          {winnerName && (
+            <div
+              style={{
+                fontFamily: PIXEL_FONT,
+                fontSize: "11px",
+                color: iWon ? "#007700" : "#cc2200",
+                marginTop: "12px",
+                letterSpacing: "1px",
+              }}
+            >
+              {iWon ? "YOU WIN!" : `${winnerName} WINS!`}
+            </div>
+          )}
           <div style={{ fontFamily: PIXEL_FONT, fontSize: "8px", color: "#888", marginTop: "8px" }}>
             ────────────────────
           </div>
         </div>
 
-        <ResultTable results={merged} />
+        {totalRounds > 1 && sortedWins.length > 0 && (
+          <PixelBox style={{ marginBottom: "20px" }}>
+            <div
+              style={{
+                fontFamily: PIXEL_FONT,
+                fontSize: "8px",
+                color: "#555",
+                marginBottom: "12px",
+                letterSpacing: "1px",
+              }}
+            >
+              FINAL SCORE
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {sortedWins.map((entry) => (
+                <div
+                  key={entry.pid}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontFamily: PIXEL_FONT,
+                    fontSize: "9px",
+                    color: "#1a1a1a",
+                  }}
+                >
+                  <span>{entry.name}</span>
+                  <span>
+                    {"★".repeat(entry.wins)} ({entry.wins}W)
+                  </span>
+                </div>
+              ))}
+            </div>
+          </PixelBox>
+        )}
+
+        <ResultTable results={results} />
 
         <div style={{ display: "flex", gap: "10px" }}>
-          <PixelButton
-            style={{ flex: 1, padding: "14px", fontSize: "9px" }}
-            onClick={handleReplay}
-          >
-            ▶ PLAY AGAIN
-          </PixelButton>
           <PixelButton
             variant="secondary"
             style={{ flex: 1, padding: "14px", fontSize: "9px" }}

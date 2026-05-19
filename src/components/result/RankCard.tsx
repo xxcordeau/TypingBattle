@@ -46,7 +46,7 @@ export function RankCard({ rank, name, wpm, accuracy, animationDelay, forfeited 
         {label}
       </div>
 
-      {isFirst ? <DinoSprite size={32} animate /> : <CatSprite size={28} />}
+      {isFirst ? <DinoSprite size={32} animate color="#f0ece0" /> : <CatSprite size={28} />}
 
       <div style={{ flex: 1 }}>
         <div

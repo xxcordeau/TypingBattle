@@ -5,18 +5,10 @@ interface Props {
   progress: number;
   animate: boolean;
   label?: string;
-  spriteColor?: string;
   forfeited?: boolean;
 }
 
-export function ProgressBar({
-  progress,
-  animate,
-  label = "YOU",
-  spriteColor = "#f0ece0",
-  forfeited = false,
-}: Props) {
-  const dimmed = forfeited;
+export function ProgressBar({ progress, animate, label = "YOU", forfeited = false }: Props) {
   return (
     <div
       style={{
@@ -24,22 +16,12 @@ export function ProgressBar({
         alignItems: "center",
         gap: "10px",
         marginBottom: "6px",
-        opacity: dimmed ? 0.35 : 1,
+        opacity: forfeited ? 0.35 : 1,
         transition: "opacity 0.3s",
       }}
     >
-      <DinoSprite size={24} animate={!dimmed && animate} color={spriteColor} eyeColor="#1a1a1a" />
-      <span
-        style={{
-          fontFamily: PIXEL_FONT,
-          fontSize: "8px",
-          color: "#f0ece0",
-          minWidth: "80px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
+      <DinoSprite size={24} animate={!forfeited && animate} />
+      <span style={{ fontFamily: PIXEL_FONT, fontSize: "8px", color: "#f0ece0", minWidth: "40px" }}>
         {label}
       </span>
       <div
@@ -56,11 +38,11 @@ export function ProgressBar({
           style={{
             height: "100%",
             width: `${progress}%`,
-            background: dimmed ? "#666" : "#f0ece0",
+            background: forfeited ? "#666" : "#f0ece0",
             transition: "width 0.1s linear",
           }}
         />
-        {dimmed && (
+        {forfeited && (
           <span
             style={{
               position: "absolute",

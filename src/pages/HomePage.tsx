@@ -12,17 +12,23 @@ import { JoinRoomForm } from "@/components/home/JoinRoomForm";
 type Tab = "create" | "join";
 
 export function HomePage() {
-  const { nickname, setNickname, createRoom, joinRoom } = useGameStore();
-  const [tab, setTab] = useState<Tab>("create");
+  const { nickname, setNickname, createRoom, joinRoom, isLoading } = useGameStore();
 
-  const handleCreate = (textType: TextType, customText?: string) => {
+  const [inviteCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("code")?.toUpperCase() ?? "";
+  });
+
+  const [tab, setTab] = useState<Tab>(inviteCode ? "join" : "create");
+
+  const handleCreate = (textType: TextType, totalRounds: number, customText?: string) => {
     if (!nickname) return;
-    createRoom(nickname, textType, customText);
+    createRoom(nickname, textType, totalRounds, customText);
   };
 
-  const handleJoin = (roomCode: string) => {
+  const handleJoin = (roomCode: string, spectator?: boolean) => {
     if (!nickname || roomCode.length !== 6) return;
-    joinRoom(nickname, roomCode);
+    joinRoom(nickname, roomCode, spectator);
   };
 
   return (
@@ -137,10 +143,71 @@ export function HomePage() {
           </div>
 
           {tab === "create" ? (
-            <CreateRoomForm disabled={!nickname} onSubmit={handleCreate} />
+            <CreateRoomForm disabled={!nickname || isLoading} onSubmit={handleCreate} />
           ) : (
-            <JoinRoomForm disabled={!nickname} onSubmit={handleJoin} />
+            <JoinRoomForm disabled={!nickname || isLoading} onSubmit={handleJoin} initialCode={inviteCode} />
           )}
+        </PixelBox>
+
+        <PixelBox
+          style={{
+            marginTop: "24px",
+            animation: "floatUp 0.5s 0.2s ease both",
+            opacity: 0,
+            animationFillMode: "forwards",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: "8px",
+              color: "#1a1a1a",
+              letterSpacing: "1px",
+              marginBottom: "14px",
+            }}
+          >
+            HOW TO PLAY
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              fontFamily: PIXEL_FONT,
+              fontSize: "10px",
+              lineHeight: "1.8",
+            }}
+          >
+            {[
+              { step: "1", ko: "닉네임을 입력하세요", en: "Enter your nickname" },
+              { step: "2", ko: "방을 만들거나 코드로 참가하세요", en: "Create a room or join with a code" },
+              { step: "3", ko: "친구에게 방 코드를 공유하세요", en: "Share the room code with friends" },
+              { step: "4", ko: "주어진 문장을 가장 빠르게 타이핑하세요", en: "Type the given text as fast as you can" },
+              { step: "5", ko: "오타는 백스페이스로 지우고 다시 입력하세요", en: "Use backspace to fix typos and retype" },
+              { step: "6", ko: "먼저 끝내는 사람이 승리!", en: "First to finish wins!" },
+            ].map((item) => (
+              <div key={item.step} style={{ display: "flex", gap: "10px" }}>
+                <span
+                  style={{
+                    color: "#f0ece0",
+                    background: "#1a1a1a",
+                    minWidth: "18px",
+                    height: "18px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.step}
+                </span>
+                <div>
+                  <div style={{ color: "#1a1a1a" }}>{item.ko}</div>
+                  <div style={{ color: "#aaa" }}>{item.en}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </PixelBox>
 
         <div

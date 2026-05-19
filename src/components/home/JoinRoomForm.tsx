@@ -5,11 +5,12 @@ import { PixelInput } from "@/components/common/PixelInput";
 
 interface Props {
   disabled: boolean;
-  onSubmit: (roomCode: string) => void;
+  onSubmit: (roomCode: string, spectator?: boolean) => void;
+  initialCode?: string;
 }
 
-export function JoinRoomForm({ disabled, onSubmit }: Props) {
-  const [roomCode, setRoomCode] = useState("");
+export function JoinRoomForm({ disabled, onSubmit, initialCode = "" }: Props) {
+  const [roomCode, setRoomCode] = useState(initialCode);
 
   return (
     <div style={{ animation: "popIn 0.2s ease" }}>
@@ -35,13 +36,28 @@ export function JoinRoomForm({ disabled, onSubmit }: Props) {
           marginBottom: "16px",
         }}
       />
-      <PixelButton
-        style={{ width: "100%", fontSize: "11px", padding: "14px" }}
-        onClick={() => onSubmit(roomCode)}
-        disabled={disabled || roomCode.length !== 6}
-      >
-        JOIN ROOM
-      </PixelButton>
+      <div style={{ display: "flex", gap: "8px" }}>
+        <PixelButton
+          style={{ flex: 1, fontSize: "11px", padding: "14px" }}
+          onClick={() => onSubmit(roomCode)}
+          disabled={disabled || roomCode.length !== 6}
+        >
+          JOIN
+        </PixelButton>
+        <PixelButton
+          style={{
+            flex: 1,
+            fontSize: "11px",
+            padding: "14px",
+            background: "#888",
+            color: "#f0ece0",
+          }}
+          onClick={() => onSubmit(roomCode, true)}
+          disabled={disabled || roomCode.length !== 6}
+        >
+          SPECTATE
+        </PixelButton>
+      </div>
     </div>
   );
 }

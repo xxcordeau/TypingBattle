@@ -10,7 +10,7 @@ export function OtherPlayersBar({ players }: Props) {
   return (
     <>
       {players.map((p) => {
-        const dimmed = p.forfeited;
+        const dimmed = !!p.forfeited;
         return (
           <div
             key={p.playerId}
@@ -23,12 +23,12 @@ export function OtherPlayersBar({ players }: Props) {
               transition: "opacity 0.3s",
             }}
           >
-            <CatSprite size={24} color="#aaa" eyeColor="#1a1a1a" />
+            <CatSprite size={24} />
             <span
               style={{
                 fontFamily: PIXEL_FONT,
                 fontSize: "8px",
-                color: "#aaa",
+                color: "#888",
                 minWidth: "80px",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -42,7 +42,7 @@ export function OtherPlayersBar({ players }: Props) {
                 flex: 1,
                 height: "16px",
                 background: "#333",
-                border: "2px solid #555",
+                border: "2px solid #444",
                 position: "relative",
                 overflow: "hidden",
               }}
@@ -51,7 +51,7 @@ export function OtherPlayersBar({ players }: Props) {
                 style={{
                   height: "100%",
                   width: `${p.progress}%`,
-                  background: dimmed ? "#555" : "#999",
+                  background: dimmed ? "#555" : "#666",
                   transition: "width 0.3s linear",
                 }}
               />
@@ -76,7 +76,7 @@ export function OtherPlayersBar({ players }: Props) {
               style={{
                 fontFamily: PIXEL_FONT,
                 fontSize: "8px",
-                color: "#aaa",
+                color: "#888",
                 minWidth: "36px",
                 textAlign: "right",
               }}

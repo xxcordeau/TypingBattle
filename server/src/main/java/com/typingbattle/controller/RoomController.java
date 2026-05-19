@@ -1,0 +1,136 @@
+package com.typingbattle.controller;
+
+import com.typingbattle.dto.CreateRoomRequest;
+import com.typingbattle.dto.JoinRoomRequest;
+import com.typingbattle.dto.LeaveRoomRequest;
+import com.typingbattle.model.Player;
+import com.typingbattle.model.Room;
+import com.typingbattle.service.RoomService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/rooms")
+public class RoomController {
+
+    private final RoomService roomService;
+    private final SimpMessagingTemplate messaging;
+    private final GameController gameController;
+
+    public RoomController(RoomService roomService, SimpMessagingTemplate messaging, GameController gameController) {
+        this.roomService = roomService;
+        this.messaging = messaging;
+        this.gameController = gameController;
+    }
+
+    @PostMapping
+    public ResponseEntity<?> createRoom(@RequestBody CreateRoomRequest req) {
+        Room room = roomService.createRoom(
+            req.getHostName(), req.getMaxPlayers(), req.getTextType(), req.getCustomText(), req.getTotalRounds());
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("roomId", room.getRoomId());
+        res.put("roomCode", room.getRoomCode());
+        res.put("hostId", room.getHostId());
+        res.put("text", room.getText());
+        res.put("maxPlayers", room.getMaxPlayers());
+        res.put("totalRounds", room.getTotalRounds());
+        res.put("status", room.getStatus());
+        return ResponseEntity.ok(res);
+    }
+
+    @PostMapping("/{roomCode}/join")
+    public ResponseEntity<?> joinRoom(@PathVariable String roomCode, @RequestBody JoinRoomRequest req) {
+        try {
+            Player player = roomService.joinRoom(roomCode, req.getPlayerName(), req.isSpectator());
+            Room room = roomService.getRoom(roomCode);
+
+            Map<String, Object> wsMsg = new LinkedHashMap<>();
+            wsMsg.put("type", "PLAYER_JOINED");
+            wsMsg.put("players", toPlayerList(room.getPlayers()));
+            messaging.convertAndSend("/topic/room/" + room.getRoomId(), wsMsg);
+
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("playerId", player.getPlayerId());
+            res.put("roomId", room.getRoomId());
+            res.put("roomCode", room.getRoomCode());
+            res.put("text", room.getText());
+            res.put("players", toPlayerList(room.getPlayers()));
+            res.put("isSpectator", player.isSpectator());
+            res.put("status", room.getStatus());
+            return ResponseEntity.ok(res);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{roomCode}/leave")
+    public ResponseEntity<?> leaveRoom(@PathVariable String roomCode, @RequestBody LeaveRoomRequest req) {
+        Room room = roomService.getRoom(roomCode);
+        String statusBefore = room != null ? room.getStatus() : null;
+
+        roomService.leaveRoom(roomCode, req.getPlayerId());
+
+        room = roomService.getRoom(roomCode);
+        if (room == null) return ResponseEntity.noContent().build();
+
+        long activePlayers = room.getPlayers().stream().filter(p -> !p.isSpectator()).count();
+
+        // Notify remaining players
+        Map<String, Object> wsMsg = new LinkedHashMap<>();
+        wsMsg.put("type", "PLAYER_LEFT");
+        wsMsg.put("players", toPlayerList(room.getPlayers()));
+        messaging.convertAndSend("/topic/room/" + room.getRoomId(), wsMsg);
+
+        if (activePlayers == 0) {
+            Map<String, Object> closedMsg = new LinkedHashMap<>();
+            closedMsg.put("type", "ROOM_CLOSED");
+            messaging.convertAndSend("/topic/room/" + room.getRoomId(), closedMsg);
+            roomService.removeRoom(roomCode);
+        } else if ("playing".equals(statusBefore)) {
+            // Update game progress (remove left player's bar)
+            gameController.broadcastGameProgress(room.getRoomId(), room);
+
+            if (activePlayers <= 1) {
+                // Only 1 player left → game over
+                gameController.sendGameOver(room.getRoomId(), room);
+            } else if (roomService.isRoundFinished(roomCode)) {
+                // All remaining players already finished → process round end
+                gameController.processRoundEnd(room.getRoomId());
+            }
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{roomCode}/result")
+    public ResponseEntity<?> getResult(@PathVariable String roomCode) {
+        Room room = roomService.getRoom(roomCode);
+        if (room == null) {
+            return ResponseEntity.status(404).body(Map.of("message", "Room not found"));
+        }
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("roomId", room.getRoomId());
+        res.put("results", room.getResults());
+        return ResponseEntity.ok(res);
+    }
+
+    private List<Map<String, Object>> toPlayerList(List<Player> players) {
+        return players.stream().map(p -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("playerId", p.getPlayerId());
+            m.put("playerName", p.getPlayerName());
+            m.put("isHost", p.isHost());
+            m.put("isSpectator", p.isSpectator());
+            return m;
+        }).toList();
+    }
+}

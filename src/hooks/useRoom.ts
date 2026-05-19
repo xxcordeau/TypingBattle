@@ -11,6 +11,7 @@ export function useRoom() {
       roomId: s.roomId,
       roomCode: s.roomCode,
       isHost: s.isHost,
+      isSpectator: s.isSpectator,
       maxPlayers: s.maxPlayers,
       players: s.players,
       text: s.text,

@@ -2,13 +2,14 @@ export type TextType = "korean" | "english" | "custom";
 
 export type RoomStatus = "waiting" | "playing" | "finished";
 
-export type Screen = "home" | "waiting" | "game" | "result";
+export type Screen = "home" | "waiting" | "game" | "roundResult" | "result";
 
 export interface PlayerResponse {
   playerId: string;
   playerName: string;
   isHost: boolean;
   isReady?: boolean;
+  isSpectator?: boolean;
 }
 
 export interface GamePlayer {
@@ -16,7 +17,7 @@ export interface GamePlayer {
   playerName: string;
   progress: number;
   isFinished: boolean;
-  forfeited: boolean;
+  forfeited?: boolean;
   rank?: number;
 }
 
@@ -25,6 +26,7 @@ export interface CreateRoomRequest {
   maxPlayers: number;
   textType: TextType;
   customText?: string;
+  totalRounds?: number;
 }
 
 export interface CreateRoomResponse {
@@ -33,11 +35,13 @@ export interface CreateRoomResponse {
   hostId: string;
   text: string;
   maxPlayers: number;
+  totalRounds: number;
   status: RoomStatus;
 }
 
 export interface JoinRoomRequest {
   playerName: string;
+  spectator?: boolean;
 }
 
 export interface JoinRoomResponse {
@@ -45,8 +49,9 @@ export interface JoinRoomResponse {
   roomId: string;
   roomCode: string;
   text: string;
-  textType: TextType;
   players: PlayerResponse[];
+  isSpectator?: boolean;
+  status?: string;
 }
 
 export interface GameResult {
@@ -65,16 +70,25 @@ export interface ResultResponse {
 
 // ── WebSocket payload types ───────────────────
 export type RoomTopicMessage = {
-  type: "PLAYER_JOINED" | "PLAYER_LEFT" | "GAME_START";
+  type: "PLAYER_JOINED" | "PLAYER_LEFT" | "GAME_START" | "ROOM_CLOSED";
   players: PlayerResponse[];
+  totalRounds?: number;
+  currentRound?: number;
 };
 
 export type GameTopicMessage = {
   players: GamePlayer[];
+  countdownSeconds?: number;
 };
 
 export type ResultTopicMessage = {
-  results: GameResult[];
+  type?: "ROUND_RESULT" | "GAME_OVER" | "NEXT_ROUND";
+  currentRound?: number;
+  totalRounds?: number;
+  roundWinnerId?: string;
+  results?: GameResult[];
+  wins?: Record<string, number>;
+  text?: string;
 };
 
 export interface ProgressPayload {
@@ -91,4 +105,10 @@ export interface FinishPayload {
 
 export interface ForfeitPayload {
   playerId: string;
+}
+
+export interface ApiError {
+  status: number;
+  message: string;
+  code?: string;
 }

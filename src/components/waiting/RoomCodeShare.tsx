@@ -8,16 +8,23 @@ interface Props {
 }
 
 export function RoomCodeShare({ roomCode }: Props) {
-  const [copied, setCopied] = useState(false);
+  const [copiedType, setCopiedType] = useState<"code" | "link" | null>(null);
 
-  const handleCopy = async () => {
+  const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(roomCode);
-    } catch {
-      // clipboard 실패해도 UI 는 동일하게
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    } catch {}
+    setCopiedType("code");
+    setTimeout(() => setCopiedType(null), 2000);
+  };
+
+  const handleCopyLink = async () => {
+    const link = `${window.location.origin}?code=${roomCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+    } catch {}
+    setCopiedType("link");
+    setTimeout(() => setCopiedType(null), 2000);
   };
 
   return (
@@ -35,13 +42,22 @@ export function RoomCodeShare({ roomCode }: Props) {
       >
         {roomCode}
       </div>
-      <PixelButton
-        variant="secondary"
-        style={{ marginTop: "14px", fontSize: "8px" }}
-        onClick={handleCopy}
-      >
-        {copied ? "✓ COPIED!" : "COPY CODE"}
-      </PixelButton>
+      <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginTop: "14px" }}>
+        <PixelButton
+          variant="secondary"
+          style={{ fontSize: "8px" }}
+          onClick={handleCopyCode}
+        >
+          {copiedType === "code" ? "✓ COPIED!" : "COPY CODE"}
+        </PixelButton>
+        <PixelButton
+          variant="secondary"
+          style={{ fontSize: "8px" }}
+          onClick={handleCopyLink}
+        >
+          {copiedType === "link" ? "✓ COPIED!" : "COPY LINK"}
+        </PixelButton>
+      </div>
     </PixelBox>
   );
 }
